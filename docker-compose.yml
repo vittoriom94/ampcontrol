@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6379:6379"
+  db:
+    image: postgres
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+  web:
+    build: .
+    command: bash -c "python app.py"
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=postgres
+      - DB_ENDPOINT=db
+      - REDIS_ENDPOINT=redis
+      - ENV=dev
+    depends_on:
+      - db
+      - redis
+      - test
+  test:
+    build: .
+    command: bash -c "pytest ."
+    environment:
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=postgres_test
+      - DB_ENDPOINT=db
+      - REDIS_ENDPOINT=redis
+      - ENV=test

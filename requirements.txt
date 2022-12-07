@@ -1,0 +1,11 @@
+pytest
+pytest-mock
+fastapi
+psycopg2
+sqlalchemy
+pydantic
+httpx
+uvicorn
+redis
+pytz
+trio
