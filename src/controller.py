@@ -33,6 +33,7 @@ async def import_data(url: str, session: Session) -> int:
             if not existing_vehicle:
                 session.add(vehicle)
             else:
+                logging.info(f"Vehicle {vehicle.plate} already exists. Updating...")
                 vehicle.id = existing_vehicle.id
                 session.merge(vehicle)
             session.commit()
@@ -49,6 +50,7 @@ async def import_data(url: str, session: Session) -> int:
             )
             nonlocal count
             count += 1
+            logging.info(f"Imported vehicle with plate {vehicle.plate}")
         except Exception as ex:
             session.rollback()
             logging.error(f"Could not import vehicle: {line} due to: {ex}")
@@ -67,6 +69,8 @@ def update_and_retrieve_ready(session: Session) -> list[models.Vehicle]:
     current_time = datetime.datetime.now(tz=pytz.utc)
 
     ready_vehicles = []
+    if not vehicles:
+        logging.warning("No vehicles found in Redis")
     for plate, end_time in vehicles:
         vehicle = session.execute(
             select(models.Vehicle).filter_by(plate=plate)
@@ -80,6 +84,7 @@ def update_and_retrieve_ready(session: Session) -> list[models.Vehicle]:
         vehicle.start_time = current_time
         if end_time <= current_time:
             ready_vehicles.append(vehicle)
+    logging.info(f"Updated {len(vehicles)} vehicles")
     session.commit()
     return ready_vehicles
 
@@ -93,6 +98,7 @@ def remove_vehicle(plate: str, session: Session) -> int:
     :return: current charge of the vehicle
     """
     if not redis_api.get_vehicle(plate):
+        logging.error(f"Vehicle not found: {plate}")
         raise VehicleDoesNotExistError(plate)
     redis_api.remove_vehicle(plate)
     vehicle = session.execute(
@@ -120,6 +126,7 @@ def get_vehicle(plate: str) -> [datetime.datetime, bool]:
     """
     expected_end_of_charge = redis_api.get_vehicle(plate)
     if not expected_end_of_charge:
+        logging.error(f"Vehicle not found {plate}")
         raise VehicleDoesNotExistError(plate)
     return expected_end_of_charge, expected_end_of_charge <= datetime.datetime.now(
         tz=pytz.utc
